@@ -1,0 +1,25 @@
+[project]
+name = "dotfile-manager"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "MLNelsson", email = "mikael.nelsson@live.se" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "pydantic>=2.12.5",
+    "pydantic-settings>=2.13.1",
+]
+
+[project.scripts]
+dfm = "dotfile_manager.cli:main"
+
+[build-system]
+requires = ["uv_build>=0.10.9,<0.11.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.2",
+]
