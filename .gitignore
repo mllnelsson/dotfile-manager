@@ -11,3 +11,8 @@ wheels/
 
 # Enviromentals
 .env
+
+
+# Agent documentation
+AGENTS.md
+.agent-docs/*
