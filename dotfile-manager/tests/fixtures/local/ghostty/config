@@ -1,0 +1,5 @@
+# ghostty config (local version)
+font-size = 14
+theme = "Catppuccin Mocha"
+window-padding-x = 12
+background-opacity = 0.95

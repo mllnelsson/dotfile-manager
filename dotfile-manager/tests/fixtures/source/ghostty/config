@@ -1,0 +1,4 @@
+# ghostty config (source repo version)
+font-size = 13
+theme = "Catppuccin Mocha"
+window-padding-x = 8
