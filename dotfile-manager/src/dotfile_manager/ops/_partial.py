@@ -1,48 +1,37 @@
+import re
+
 from rich.console import Console
 from rich.prompt import Confirm
 
 from dotfile_manager.tui._panels import _make_hunk_panel
 
-_CONTEXT_LINES = 3
-
 
 def _split_into_hunks(diff_lines: list[str]) -> list[list[str]]:
-    """Split unified diff lines into individual change hunks."""
+    """Split unified diff lines into hunks; each hunk begins with its @@ header."""
     hunks: list[list[str]] = []
-    current_hunk: list[str] = []
-    in_change = False
-    context_countdown = 0
+    current: list[str] = []
 
     for line in diff_lines:
-        # Skip file headers
-        if line.startswith("---") or line.startswith("+++") or line.startswith("@@"):
-            if current_hunk:
-                hunks.append(current_hunk)
-                current_hunk = []
-            in_change = False
-            context_countdown = 0
+        if line.startswith("---") or line.startswith("+++"):
             continue
+        if line.startswith("@@"):
+            if current:
+                hunks.append(current)
+            current = [line]
+        elif current:
+            current.append(line)
 
-        is_change = line.startswith("+") or line.startswith("-")
-
-        if is_change:
-            current_hunk.append(line)
-            in_change = True
-            context_countdown = _CONTEXT_LINES
-        elif in_change:
-            if context_countdown > 0:
-                current_hunk.append(line)
-                context_countdown -= 1
-            else:
-                # Gap between hunks — flush current
-                if current_hunk:
-                    hunks.append(current_hunk)
-                    current_hunk = []
-                in_change = False
-
-    if current_hunk:
-        hunks.append(current_hunk)
+    if current:
+        hunks.append(current)
     return hunks
+
+
+def _parse_hunk_header(header: str) -> int:
+    """Parse @@ -old_start[,count] +... @@ and return old_start as a 0-based index."""
+    m = re.match(r"@@ -(\d+)", header)
+    if not m:
+        raise ValueError(f"Cannot parse hunk header: {header!r}")
+    return int(m.group(1)) - 1  # unified diff is 1-based
 
 
 def _apply_selected_hunks(
@@ -50,25 +39,32 @@ def _apply_selected_hunks(
     all_hunks: list[list[str]],
     selected: list[bool],
 ) -> list[str]:
-    """Return new file content applying only the selected hunks."""
-    # Build the set of lines to remove and lines to add
-    # For simplicity: reconstruct from the diff perspective
-    # Lines starting with '-' in selected hunks are removed from original
-    # Lines starting with '+' in selected hunks are added
+    """Return file content with only the selected hunks applied."""
+    result: list[str] = []
+    orig_pos = 0  # 0-based cursor into original_lines
 
-    lines_to_remove: set[str] = set()
-    lines_to_add: list[str] = []
+    for hunk, apply in zip(all_hunks, selected):
+        old_start = _parse_hunk_header(hunk[0])
 
-    for hunk, keep in zip(all_hunks, selected):
-        if keep:
-            for line in hunk:
-                if line.startswith("-"):
-                    lines_to_remove.add(line[1:])
-                elif line.startswith("+"):
-                    lines_to_add.append(line[1:])
+        # Copy original lines that precede this hunk
+        result.extend(original_lines[orig_pos:old_start])
+        orig_pos = old_start
 
-    result = [line for line in original_lines if line not in lines_to_remove]
-    result.extend(lines_to_add)
+        for line in hunk[1:]:
+            if line.startswith("+"):
+                if apply:
+                    result.append(line[1:])
+            elif line.startswith("-"):
+                if not apply:
+                    result.append(original_lines[orig_pos])
+                orig_pos += 1
+            else:
+                # context line — always keep from original (authoritative)
+                result.append(original_lines[orig_pos])
+                orig_pos += 1
+
+    # Copy any trailing lines after the last hunk
+    result.extend(original_lines[orig_pos:])
     return result
 
 

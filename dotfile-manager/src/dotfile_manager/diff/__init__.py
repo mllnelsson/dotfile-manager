@@ -9,8 +9,8 @@ from ._engine import _diff_dirs, _diff_files
 def compute_diff(
     entry: DotfileEntry, local_path: Path
 ) -> list[str] | dict[str, list[str]]:
-    source_path = TOOL_CONFIG.root_source / entry.source_path
-    if entry.is_dir:
+    source_path = TOOL_CONFIG.source_root / entry.source_path
+    if source_path.is_dir():
         return _diff_dirs(source_path, local_path)
     return _diff_files(source_path, local_path)
 

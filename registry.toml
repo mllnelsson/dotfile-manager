@@ -1,17 +1,14 @@
 [[entries]]
 name = "nvim"
 source_path = "nvim"
-file_type = "nvim"
-is_dir = true
+local_path = ".config/nvim"
 
 [[entries]]
 name = "ghostty"
 source_path = "ghostty"
-file_type = "ghostty"
-is_dir = true
+local_path = ".config/ghosty"
 
 [[entries]]
 name = "zsh"
 source_path = "zsh/.zshrc"
-file_type = "zsh"
-is_dir = false
+local_path = ".zshrc"

@@ -31,7 +31,7 @@ def _get_entries(name: str | None) -> list[DotfileEntry]:
 def list_entries() -> None:
     """List all dotfile entries in the registry."""
     entries = load_entries_from_file()
-    rows = [(e.name, str(e.file_type), "dir" if e.is_dir else "file") for e in entries]
+    rows = [(e.name, str(e.local_path), str(e.source_path)) for e in entries]
     render_summary(rows)
 
 

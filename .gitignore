@@ -15,4 +15,4 @@ wheels/
 
 # Agent documentation
 AGENTS.md
-.agent-docs/*
+agent-docs/*

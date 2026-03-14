@@ -1,8 +1,8 @@
 """Integration tests using fixture dotfiles in tests/fixtures/.
 
 Each test works against tmp_path copies of the fixtures so the repo files
-are never mutated.  ROOT_SOURCE is patched to the copied source tree and
-LOCAL_PATH_MAP is redirected to the copied local tree.
+are never mutated.  source_root and local_root are patched on the singleton
+TOOL_CONFIG.
 """
 
 import shutil
@@ -19,33 +19,17 @@ runner = CliRunner()
 
 @pytest.fixture()
 def env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
-    """Copy fixtures to tmp_path, patch ROOT_SOURCE and LOCAL_PATH_MAP."""
+    """Copy fixtures to tmp_path, patch TOOL_CONFIG source_root and local_root."""
     source = tmp_path / "source"
     local = tmp_path / "local"
     shutil.copytree(FIXTURES / "source", source)
     shutil.copytree(FIXTURES / "local", local)
 
-    # Patch the singleton config object so all modules see the new root
     from dotfile_manager import tool_config
 
-    monkeypatch.setattr(tool_config.TOOL_CONFIG, "root_source", source)
-    monkeypatch.setattr(
-        tool_config.TOOL_CONFIG, "registry_file", source / "registry.toml"
-    )
-
-    # Redirect LOCAL_PATH_MAP entries to the tmp local tree
-    from dotfile_manager import local_paths
-    from dotfile_manager.registry.model import DotfileType
-
-    monkeypatch.setitem(
-        local_paths.LOCAL_PATH_MAP, DotfileType.NVIM, local / "nvim"
-    )
-    monkeypatch.setitem(
-        local_paths.LOCAL_PATH_MAP, DotfileType.GHOSTTY, local / "ghostty"
-    )
-    monkeypatch.setitem(
-        local_paths.LOCAL_PATH_MAP, DotfileType.ZSH, local / "zsh" / ".zshrc"
-    )
+    monkeypatch.setattr(tool_config.TOOL_CONFIG, "source_root", source)
+    monkeypatch.setattr(tool_config.TOOL_CONFIG, "registry_file", source / "registry.toml")
+    monkeypatch.setattr(tool_config.TOOL_CONFIG, "local_root", local)
 
     return {"source": source, "local": local}
 
@@ -71,18 +55,19 @@ def test_list_shows_all_entries(env: dict) -> None:
 def test_compare_detects_diff_in_file(env: dict) -> None:
     result = runner.invoke(app, ["compare", "zsh"])
     assert result.exit_code == 0
-    # local .zshrc has extra aliases — we expect additions in the diff
-    assert "gc" in result.output or "+" in result.output
+    # local .zshrc adds "alias gc=" and changes the PATH line
+    assert "gc" in result.output
+    assert "alias gc" in result.output or "+alias gc" in result.output
 
 
 def test_compare_detects_diff_in_dir(env: dict) -> None:
     result = runner.invoke(app, ["compare", "nvim"])
     assert result.exit_code == 0
-    # local init.lua has relativenumber + tabstop=2; plugins.lua adds which-key
-    assert "relativenumber" in result.output or "+" in result.output
+    # local init.lua adds relativenumber and changes tabstop from 4 to 2
+    assert "relativenumber" in result.output
 
 
-def test_compare_no_diff_when_identical(env: dict, tmp_path: Path) -> None:
+def test_compare_no_diff_when_identical(env: dict) -> None:
     """Sync first to make source == local, then compare should show nothing."""
     from dotfile_manager.ops import sync_local
     from dotfile_manager.registry import load_entries_from_file
@@ -121,7 +106,6 @@ def test_sync_dir_overwrites_local(env: dict) -> None:
 def test_sync_all_entries(env: dict) -> None:
     result = runner.invoke(app, ["sync"])
     assert result.exit_code == 0
-    # All three entries synced without error
     for name in ("nvim", "ghostty", "zsh"):
         assert name in result.output
 

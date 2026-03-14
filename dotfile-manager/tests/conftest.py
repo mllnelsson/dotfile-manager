@@ -2,26 +2,24 @@ from pathlib import Path
 
 import pytest
 
-from dotfile_manager.registry.model import DotfileEntry, DotfileType
+from dotfile_manager.registry.model import DotfileEntry
 
 
 @pytest.fixture()
-def file_entry(tmp_path: Path) -> DotfileEntry:
+def file_entry() -> DotfileEntry:
     return DotfileEntry(
-        name="test_file",
-        source_path=Path("test_file.txt"),
-        file_type=DotfileType.ZSH,
-        is_dir=False,
+        name="zsh",
+        source_path=Path("zsh/.zshrc"),
+        local_path=Path(".zshrc"),
     )
 
 
 @pytest.fixture()
-def dir_entry(tmp_path: Path) -> DotfileEntry:
+def dir_entry() -> DotfileEntry:
     return DotfileEntry(
-        name="test_dir",
-        source_path=Path("test_dir"),
-        file_type=DotfileType.NVIM,
-        is_dir=True,
+        name="nvim",
+        source_path=Path("nvim"),
+        local_path=Path(".config/nvim"),
     )
 
 

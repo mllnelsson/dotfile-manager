@@ -5,8 +5,7 @@ from rich.console import Console
 
 from dotfile_manager.diff import compute_diff
 from dotfile_manager.errors import LocalPathNotFoundError
-from dotfile_manager.local_paths import resolve_local_path
-from dotfile_manager.registry.model import DotfileEntry
+from dotfile_manager.registry import DotfileEntry
 from dotfile_manager.tool_config import TOOL_CONFIG
 from dotfile_manager.tui import render_diff
 
@@ -15,8 +14,12 @@ from ._partial import _apply_selected_hunks, _split_into_hunks, prompt_hunks
 _console = Console()
 
 
+def _resolve_local_path(entry: DotfileEntry) -> Path:
+    return TOOL_CONFIG.local_root / entry.local_path
+
+
 def compare(entry: DotfileEntry) -> None:
-    local_path = resolve_local_path(entry)
+    local_path = _resolve_local_path(entry)
     if not local_path.exists():
         raise LocalPathNotFoundError(f"Local path does not exist: {local_path}")
     diff = compute_diff(entry, local_path)
@@ -25,12 +28,12 @@ def compare(entry: DotfileEntry) -> None:
 
 def update_source(entry: DotfileEntry, partial: bool = False) -> None:
     """Copy local → source repo."""
-    local_path = resolve_local_path(entry)
+    local_path = _resolve_local_path(entry)
     if not local_path.exists():
         raise LocalPathNotFoundError(f"Local path does not exist: {local_path}")
-    source_path = TOOL_CONFIG.root_source / entry.source_path
+    source_path = TOOL_CONFIG.source_root / entry.source_path
 
-    if entry.is_dir:
+    if source_path.is_dir():
         _sync_dir(local_path, source_path, partial=partial, direction="local→source")
     else:
         _sync_file(local_path, source_path, partial=partial, direction="local→source")
@@ -38,13 +41,13 @@ def update_source(entry: DotfileEntry, partial: bool = False) -> None:
 
 def sync_local(entry: DotfileEntry, partial: bool = False) -> None:
     """Copy source repo → local."""
-    local_path = resolve_local_path(entry)
-    source_path = TOOL_CONFIG.root_source / entry.source_path
+    local_path = _resolve_local_path(entry)
+    source_path = TOOL_CONFIG.source_root / entry.source_path
 
     if not source_path.exists():
         raise LocalPathNotFoundError(f"Source path does not exist: {source_path}")
 
-    if entry.is_dir:
+    if source_path.is_dir():
         _sync_dir(source_path, local_path, partial=partial, direction="source→local")
     else:
         _sync_file(source_path, local_path, partial=partial, direction="source→local")
