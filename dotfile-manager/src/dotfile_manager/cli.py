@@ -3,8 +3,8 @@ from typing import Annotated
 import typer
 from rich.console import Console
 
-from dotfile_manager.errors import DfmError, EntryNotFoundError
 from dotfile_manager import ops
+from dotfile_manager.errors import DfmError, EntryNotFoundError
 from dotfile_manager.registry import load_entries_from_file
 from dotfile_manager.registry.model import DotfileEntry
 from dotfile_manager.tui import render_summary
@@ -53,15 +53,12 @@ def update(
     name: Annotated[
         str | None, typer.Argument(help="Entry name (omit for all)")
     ] = None,
-    partial: Annotated[
-        bool, typer.Option("--partial", help="Approve hunks interactively")
-    ] = False,
 ) -> None:
-    """Copy local config → source repo."""
+    """Copy local config → source repo (hunk-by-hunk approval)."""
     entries = _get_entries(name)
     for entry in entries:
         _console.rule(f"[bold]{entry.name}[/bold]")
-        ops.update_source(entry, partial=partial)
+        ops.update_source(entry)
 
 
 @app.command()
@@ -69,15 +66,12 @@ def sync(
     name: Annotated[
         str | None, typer.Argument(help="Entry name (omit for all)")
     ] = None,
-    partial: Annotated[
-        bool, typer.Option("--partial", help="Approve hunks interactively")
-    ] = False,
 ) -> None:
-    """Copy source repo → local config."""
+    """Copy source repo → local config (hunk-by-hunk approval)."""
     entries = _get_entries(name)
     for entry in entries:
         _console.rule(f"[bold]{entry.name}[/bold]")
-        ops.sync_local(entry, partial=partial)
+        ops.sync_local(entry)
 
 
 def main() -> None:

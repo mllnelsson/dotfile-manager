@@ -55,25 +55,28 @@ def test_list_shows_all_entries(env: dict) -> None:
 def test_compare_detects_diff_in_file(env: dict) -> None:
     result = runner.invoke(app, ["compare", "zsh"])
     assert result.exit_code == 0
-    # local .zshrc adds "alias gc=" and changes the PATH line
-    assert "gc" in result.output
-    assert "alias gc" in result.output or "+alias gc" in result.output
+    # local .zshrc extends PATH and adds alias gc
+    assert '-export PATH="$HOME/.local/bin:$PATH"' in result.output
+    assert '+export PATH="$HOME/.local/bin:$HOME/bin:$PATH"' in result.output
+    assert '+alias gc="git commit"' in result.output
 
 
 def test_compare_detects_diff_in_dir(env: dict) -> None:
     result = runner.invoke(app, ["compare", "nvim"])
     assert result.exit_code == 0
-    # local init.lua adds relativenumber and changes tabstop from 4 to 2
-    assert "relativenumber" in result.output
+    # init.lua: local adds relativenumber, changes tabstop/shiftwidth 4 → 2
+    assert "+vim.opt.relativenumber = true" in result.output
+    assert "-vim.opt.tabstop = 4" in result.output
+    assert "+vim.opt.tabstop = 2" in result.output
+    # plugins.lua: local adds which-key
+    assert '+    { "folke/which-key.nvim" },' in result.output
 
 
 def test_compare_no_diff_when_identical(env: dict) -> None:
-    """Sync first to make source == local, then compare should show nothing."""
-    from dotfile_manager.ops import sync_local
-    from dotfile_manager.registry import load_entries_from_file
+    """Make source == local via direct copy, then compare should show nothing."""
+    import shutil
 
-    entries = {e.name: e for e in load_entries_from_file()}
-    sync_local(entries["zsh"])
+    shutil.copy2(env["source"] / "zsh" / ".zshrc", env["local"] / "zsh" / ".zshrc")
 
     result = runner.invoke(app, ["compare", "zsh"])
     assert result.exit_code == 0
@@ -89,7 +92,7 @@ def test_sync_file_overwrites_local(env: dict) -> None:
     source_content = (env["source"] / "zsh" / ".zshrc").read_text()
     local_file = env["local"] / "zsh" / ".zshrc"
 
-    result = runner.invoke(app, ["sync", "zsh"])
+    result = runner.invoke(app, ["sync", "zsh"], input="y\n")
     assert result.exit_code == 0
     assert local_file.read_text() == source_content
 
@@ -98,13 +101,15 @@ def test_sync_dir_overwrites_local(env: dict) -> None:
     source_init = (env["source"] / "nvim" / "init.lua").read_text()
     local_init = env["local"] / "nvim" / "init.lua"
 
-    result = runner.invoke(app, ["sync", "nvim"])
+    # nvim has 2 files with diffs (init.lua, lua/plugins.lua) — one hunk each
+    result = runner.invoke(app, ["sync", "nvim"], input="y\ny\n")
     assert result.exit_code == 0
     assert local_init.read_text() == source_init
 
 
 def test_sync_all_entries(env: dict) -> None:
-    result = runner.invoke(app, ["sync"])
+    # nvim: 2 hunks, ghostty: 1 hunk, zsh: 1 hunk
+    result = runner.invoke(app, ["sync"], input="y\ny\ny\ny\n")
     assert result.exit_code == 0
     for name in ("nvim", "ghostty", "zsh"):
         assert name in result.output
@@ -119,7 +124,7 @@ def test_update_file_overwrites_source(env: dict) -> None:
     local_content = (env["local"] / "zsh" / ".zshrc").read_text()
     source_file = env["source"] / "zsh" / ".zshrc"
 
-    result = runner.invoke(app, ["update", "zsh"])
+    result = runner.invoke(app, ["update", "zsh"], input="y\n")
     assert result.exit_code == 0
     assert source_file.read_text() == local_content
 
@@ -128,7 +133,8 @@ def test_update_dir_overwrites_source(env: dict) -> None:
     local_plugins = (env["local"] / "nvim" / "lua" / "plugins.lua").read_text()
     source_plugins = env["source"] / "nvim" / "lua" / "plugins.lua"
 
-    result = runner.invoke(app, ["update", "nvim"])
+    # nvim has 2 files with diffs (init.lua, lua/plugins.lua) — one hunk each
+    result = runner.invoke(app, ["update", "nvim"], input="y\ny\n")
     assert result.exit_code == 0
     assert source_plugins.read_text() == local_plugins
 

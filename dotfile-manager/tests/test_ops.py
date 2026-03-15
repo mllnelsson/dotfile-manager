@@ -20,8 +20,20 @@ def patched_config(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     return tmp_path
 
 
-def test_sync_local_file(patched_config: Path) -> None:
+def _accept_all(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Patch prompt_hunks to auto-accept every hunk (no stdin needed)."""
+    from dotfile_manager.ops._partial import _split_into_hunks
+
+    monkeypatch.setattr(
+        "dotfile_manager.ops.prompt_hunks",
+        lambda lines, console: [True] * len(_split_into_hunks(lines)),
+    )
+
+
+def test_sync_local_file(patched_config: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     from dotfile_manager import tool_config
+
+    _accept_all(monkeypatch)
 
     entry = DotfileEntry(
         name="zsh",
@@ -39,8 +51,10 @@ def test_sync_local_file(patched_config: Path) -> None:
     assert local_file.read_text() == "source content\n"
 
 
-def test_update_source_file(patched_config: Path) -> None:
+def test_update_source_file(patched_config: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     from dotfile_manager import tool_config
+
+    _accept_all(monkeypatch)
 
     entry = DotfileEntry(
         name="zsh",
@@ -60,8 +74,10 @@ def test_update_source_file(patched_config: Path) -> None:
     assert source_file.read_text() == "local content\n"
 
 
-def test_sync_local_dir(patched_config: Path) -> None:
+def test_sync_local_dir(patched_config: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     from dotfile_manager import tool_config
+
+    _accept_all(monkeypatch)
 
     entry = DotfileEntry(
         name="nvim",
