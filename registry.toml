@@ -12,3 +12,8 @@ local_path = ".config/ghosty"
 name = "zsh"
 source_path = "zsh/.zshrc"
 local_path = ".zshrc"
+
+[[entries]]
+name = "starship"
+source_path = "starship/starship.toml"
+local_path = ".config/starship.toml"
