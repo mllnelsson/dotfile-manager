@@ -3,7 +3,7 @@ vim.opt.relativenumber = true
 vim.opt.clipboard = "unnamedplus"
 vim.opt.termguicolors = true
 vim.opt.listchars = { space = '·', tab = '>-', trail = '-', nbsp = '%' }
-vim.opt.list = tru
+vim.opt.list = true
 vim.api.nvim_create_autocmd("BufWritePre", {
   pattern = "*",
   callback = function()
@@ -21,3 +21,5 @@ vim.api.nvim_create_autocmd("BufWritePre", {
     end
   end,
 })
+vim.opt.fixendofline = true
+vim.opt.endofline = true
